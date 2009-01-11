@@ -1,27 +1,27 @@
-# To change this template, choose Tools | Templates
-# and open the template in the editor.
-
-puts "Hello World"
-
 require 'ranno'
 
 module MyMainClassAnnotations
   extend Ranno::Annotations
 
-  class_annotation 'foo'
-  def self.final(method_name, hah=nil)
-    puts "[#{method_name} is now final]"
-#    puts "also args are #{opts.inspect}"
+  class_annotation
+  def self.final(method_name)
+    puts "Final: I want #{method_name} to be final..."
+    # http://www.thesorensens.org/2006/10/06/final-methods-in-ruby-prevent-method-override
   end
 
   class_annotation
-  def self.note(method_name, note)
-    puts "Note about #{method_name}: #{note}"
+  def self.note(method_name, n)
+    puts "Note: #{method_name} is '#{n}'"
+  end
+
+  instance_annotation
+  def self.logger(method_name)
+    puts "Logger: #{method_name} is about to be called"
   end
 
   instance_annotation :before
-  def self.logger(method_name)
-    puts "note to self: #{method_name} was just called"
+  def self.time_it(method_name, args)
+    puts args.inspect
   end
 end
 
@@ -35,38 +35,29 @@ class MyMainClass
     puts "this method shouldn't be overridden"
   end
 
-  final 'foo'
+  final
   def yourdad
     puts "hahaha"
   end
 
   logger
   def yourgrammy
-    puts "dood"
+    puts "Eh????"
   end
 
+  logger
+  note 'is hot'
   def yoursister
 
   end
 
-  final
-  def yourmother
-
-  end
-
-  def one1
-
-  end
-
-  def one3
-
-  end
-
-  def one2
-
-  end
-
-
+#  time_it
+#  def counter
+#    1.upto(10000) do
+#      # nothing
+#    end
+#  end
 end
 
 MyMainClass.new.yourgrammy
+#MyMainClass.new.counter

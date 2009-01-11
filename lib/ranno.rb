@@ -4,8 +4,8 @@ require 'extlib'
 module Ranno
   module Annotations
     class Core
+      
       # Class annotations fire once, when the method itself is initialized
-
       @@class_annotations = []
       def self.class_annotation(method_name, *args, &block)
         #        puts "class annotation: #{method_name}, args are #{args.inspect}, block_given is #{block_given?}"
@@ -13,11 +13,10 @@ module Ranno
       end
 
       @@instance_annotations = []
+
       # Instance annotations fire every time the method is called
       def self.instance_annotation(method_name, *args, &block)
-        #        puts "new instance annotation: #{method_name}, #{args.inspect}, block_given is #{block_given?}"
-        @@instance_annotations << [method_name, *args]
-        #        register_class_hooks method_name.to_sym
+        @@instance_annotations << {:method => method_name, :args => args, :block => block}
       end
 
       def self.is_class_annotation? annotation
@@ -26,14 +25,21 @@ module Ranno
 
       def self.is_instance_annotation? annotation
         @@instance_annotations.each do |ia|
-          return true if ia.first == annotation
+          return true if ia[:method] == annotation
         end
         return false
+      end
+
+      def self.get_instance_annotation annotation
+        @@instance_annotations.each do |ia|
+          return ia if ia[:method] == annotation
+        end
+        return nil
       end
     end
 
     def singleton_method_added(annotation)
-      puts "new annotation: #{annotation}"
+#      puts "new annotation: #{annotation}"
       if(@@core_annotations.length == 0)
         raise "Annotation needs to be labeled as class or instance"
       end
@@ -71,26 +77,41 @@ module Ranno
     @@current_annotations = {}
     
     def use_annotations(anno_klass)
-      puts "Using annotations: #{anno_klass}"
+#      puts "Using annotations: #{anno_klass}"
       @@annotations = @@annotations + anno_klass.methods - Object.methods
       @@anno_klass = anno_klass
     end
 
     def self.included(klass)
-      puts "included: #{klass.inspect}"
+#      puts "included: #{klass.inspect}"
       klass.send :include, Extlib::Hook
       klass.send :extend, Base
       klass.after_class_method(:method_added, :my_method_added)
+      klass.before_class_method(:install_hook, :before_install_hook)
+      klass.after_class_method(:install_hook, :after_install_hook)
+    end
+
+    @@hooking = false
+    def before_install_hook
+      @@hooking = true
+    end
+
+    def after_install_hook
+      @@hooking = false
     end
 
     def my_method_added(args, method)
-      return if args.size > 0
-      puts "Adding new method: #{method.inspect}; #{args.inspect}"
+#      (puts "returing: #{method}; #{args.inspect}" or return) if args.key? method or @@hooking
+      return if @@hooking
+#      return "method not defined" unless method_defined?(method)
+#      puts "Adding new method: #{method.inspect}; #{args.inspect}"
+#      puts "was #{method.inspect} already a key in #{args.inspect}? #{args.key? method}"
       (@@current_annotations[:class_annotation] || []).each do |ann|
         if ann.key? :block
           @@anno_klass.send(ann[:method], ann[:args], ann[:block])
         else
           ann[:args].unshift(method)
+#          puts ann[:args].inspect
           @@anno_klass.send(ann[:method], *ann[:args])
         end
 
@@ -103,10 +124,18 @@ module Ranno
           #          @@anno_klass.send(ann[:method], *ann[:args])
         end
         unless method.nil?
-#          puts "hooking into #{method.inspect} using #{ann[:method].inspect} now"
-          puts "hook args: #{ann.inspect}"
-          before(method) do
-            @@anno_klass.send ann[:method], method
+#          puts "hook args: #{ann.inspect}"
+#          next if ann[:args].length > 1
+          annotation_args = ::Ranno::Annotations::Core.get_instance_annotation(ann[:method])
+          if annotation_args[:args].include?(:before) || !annotation_args[:args].include?(:after)
+            before(method) do
+              @@anno_klass.send ann[:method], method
+            end
+          end
+          if annotation_args[:args].include? :after
+            after(method) do
+              @@anno_klass.send ann[:method], method
+            end
           end
         end
       end
@@ -120,14 +149,14 @@ module Ranno
       #      method_name = sym.to_s
       is_annotation = false
       if ::Ranno::Annotations::Core.is_class_annotation? sym
-        puts "found a class annotation: #{sym}"
+#        puts "found a class annotation: #{sym}"
         ann = {:method => sym, :args => args}
         ann[:block] = block if block_given?
         (@@current_annotations[:class_annotation] ||= []) << ann
         is_annotation = true
       end
       if ::Ranno::Annotations::Core.is_instance_annotation? sym
-        puts "found an instance annotation: #{sym}"
+#        puts "found an instance annotation: #{sym}"
         ann = {:method => sym, :args => args}
         ann[:block] = block if block_given?
         (@@current_annotations[:instance_annotation] ||= []) << ann
