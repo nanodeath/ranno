@@ -38,8 +38,16 @@ module Ranno
       end
     end
 
+    def set_current_instance_annotation=(ann)
+      @@instance_annotation = ann
+    end
+
+    def annotation_args
+      @@instance_annotation
+    end
+
     def singleton_method_added(annotation)
-#      puts "new annotation: #{annotation}"
+      #      puts "new annotation: #{annotation}"
       if(@@core_annotations.length == 0)
         raise "Annotation needs to be labeled as class or instance"
       end
@@ -77,13 +85,13 @@ module Ranno
     @@current_annotations = {}
     
     def use_annotations(anno_klass)
-#      puts "Using annotations: #{anno_klass}"
+      #      puts "Using annotations: #{anno_klass}"
       @@annotations = @@annotations + anno_klass.methods - Object.methods
       @@anno_klass = anno_klass
     end
 
     def self.included(klass)
-#      puts "included: #{klass.inspect}"
+      #      puts "included: #{klass.inspect}"
       klass.send :include, Extlib::Hook
       klass.send :extend, Base
       klass.after_class_method(:method_added, :my_method_added)
@@ -101,17 +109,17 @@ module Ranno
     end
 
     def my_method_added(args, method)
-#      (puts "returing: #{method}; #{args.inspect}" or return) if args.key? method or @@hooking
+      #      (puts "returing: #{method}; #{args.inspect}" or return) if args.key? method or @@hooking
       return if @@hooking
-#      return "method not defined" unless method_defined?(method)
-#      puts "Adding new method: #{method.inspect}; #{args.inspect}"
-#      puts "was #{method.inspect} already a key in #{args.inspect}? #{args.key? method}"
+      #      return "method not defined" unless method_defined?(method)
+      #      puts "Adding new method: #{method.inspect}; #{args.inspect}"
+      #      puts "was #{method.inspect} already a key in #{args.inspect}? #{args.key? method}"
       (@@current_annotations[:class_annotation] || []).each do |ann|
         if ann.key? :block
           @@anno_klass.send(ann[:method], ann[:args], ann[:block])
         else
           ann[:args].unshift(method)
-#          puts ann[:args].inspect
+          #          puts ann[:args].inspect
           @@anno_klass.send(ann[:method], *ann[:args])
         end
 
@@ -120,20 +128,24 @@ module Ranno
         if ann.key? :block
           #          @@anno_klass.send(ann[:method], ann[:args], ann[:block])
         else
-          ann[:args].unshift(method)
+#          ann[:args].unshift(method)
           #          @@anno_klass.send(ann[:method], *ann[:args])
         end
         unless method.nil?
 #          puts "hook args: #{ann.inspect}"
-#          next if ann[:args].length > 1
+          #          next if ann[:args].length > 1
           annotation_args = ::Ranno::Annotations::Core.get_instance_annotation(ann[:method])
+#          puts "instance annotation args are #{annotation_args.inspect}"
           if annotation_args[:args].include?(:before) || !annotation_args[:args].include?(:after)
             before(method) do
-              @@anno_klass.send ann[:method], method
+              @@anno_klass.set_current_instance_annotation = annotation_args[:args].reject {|k,v| k == :after}
+#              puts "ann args: #{ann[:args].inspect}"
+              @@anno_klass.send ann[:method], method, *ann[:args]
             end
           end
           if annotation_args[:args].include? :after
             after(method) do
+              @@anno_klass.set_current_instance_annotation = annotation_args[:args].reject {|k,v| k == :before}
               @@anno_klass.send ann[:method], method
             end
           end
@@ -149,14 +161,14 @@ module Ranno
       #      method_name = sym.to_s
       is_annotation = false
       if ::Ranno::Annotations::Core.is_class_annotation? sym
-#        puts "found a class annotation: #{sym}"
+        #        puts "found a class annotation: #{sym}"
         ann = {:method => sym, :args => args}
         ann[:block] = block if block_given?
         (@@current_annotations[:class_annotation] ||= []) << ann
         is_annotation = true
       end
       if ::Ranno::Annotations::Core.is_instance_annotation? sym
-#        puts "found an instance annotation: #{sym}"
+        #        puts "found an instance annotation: #{sym}"
         ann = {:method => sym, :args => args}
         ann[:block] = block if block_given?
         (@@current_annotations[:instance_annotation] ||= []) << ann

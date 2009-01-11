@@ -19,9 +19,18 @@ module MyMainClassAnnotations
     puts "Logger: #{method_name} is about to be called"
   end
 
-  instance_annotation :before
-  def self.time_it(method_name, args)
-    puts args.inspect
+  instance_annotation :before, :after
+  def self.time_it(method_name)
+    if(annotation_args.include? :before)
+      @timer = Time.now
+    elsif(annotation_args.include? :after)
+      puts "Time It: #{method_name} took #{Time.now - @timer}s"
+    end
+  end
+
+  instance_annotation
+  def self.prefix(method_name, message)
+    print message.gsub('--method--', method_name.to_s)
   end
 end
 
@@ -30,34 +39,40 @@ class MyMainClass
 
   use_annotations MyMainClassAnnotations
 
-  final
+#  final
+  prefix "--method-- says: "
   def yourmom
-    puts "this method shouldn't be overridden"
+    puts "You don't get desert until you finish your dinner!"
   end
 
   final
+  prefix "--method-- says: "
   def yourdad
-    puts "hahaha"
+    puts "Do what your mother says."
   end
 
   logger
+  prefix "--method-- says: "
   def yourgrammy
-    puts "Eh????"
+    puts "Is someone talking??"
   end
 
   logger
   note 'is hot'
+  prefix "--method-- says: "
   def yoursister
-
+    puts "Shut up, dorkface."
   end
 
-#  time_it
-#  def counter
-#    1.upto(10000) do
-#      # nothing
-#    end
-#  end
+  time_it
+  def counter
+    1.upto(1000000) do
+      # nothing
+    end
+  end
 end
 
-MyMainClass.new.yourgrammy
-#MyMainClass.new.counter
+m = MyMainClass.new
+[:yourmom, :yourdad, :yourgrammy, :yoursister, :counter].each do |method|
+  m.send(method)
+end
