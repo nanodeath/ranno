@@ -49,7 +49,7 @@ module Ranno
     def singleton_method_added(annotation)
       #      puts "new annotation: #{annotation}"
       if(@@core_annotations.length == 0)
-        raise "Annotation needs to be labeled as class or instance"
+        #        raise "Annotation needs to be labeled as class or instance"
       end
       @@core_annotations.each_pair do |ann_name, ann_data|
         #        puts "ann_name is #{ann_name}, ann_data is #{ann_data.inspect}"
@@ -88,12 +88,13 @@ module Ranno
       #      puts "Using annotations: #{anno_klass}"
       @@annotations = @@annotations + anno_klass.methods - Object.methods
       @@anno_klass = anno_klass
+      self.send :include, anno_klass
     end
 
     def self.included(klass)
-      #      puts "included: #{klass.inspect}"
       klass.send :include, Extlib::Hook
       klass.send :extend, Base
+
       klass.after_class_method(:method_added, :my_method_added)
       klass.before_class_method(:install_hook, :before_install_hook)
       klass.after_class_method(:install_hook, :after_install_hook)
@@ -128,25 +129,24 @@ module Ranno
         if ann.key? :block
           #          @@anno_klass.send(ann[:method], ann[:args], ann[:block])
         else
-#          ann[:args].unshift(method)
+          #          ann[:args].unshift(method)
           #          @@anno_klass.send(ann[:method], *ann[:args])
         end
         unless method.nil?
-#          puts "hook args: #{ann.inspect}"
+          #          puts "hook args: #{ann.inspect}"
           #          next if ann[:args].length > 1
           annotation_args = ::Ranno::Annotations::Core.get_instance_annotation(ann[:method])
-#          puts "instance annotation args are #{annotation_args.inspect}"
+          #          puts "instance annotation args are #{annotation_args.inspect}"
           if annotation_args[:args].include?(:before) || !annotation_args[:args].include?(:after)
             before(method) do
               @@anno_klass.set_current_instance_annotation = annotation_args[:args].reject {|k,v| k == :after}
-#              puts "ann args: #{ann[:args].inspect}"
               @@anno_klass.send ann[:method], method, *ann[:args]
             end
           end
           if annotation_args[:args].include? :after
             after(method) do
               @@anno_klass.set_current_instance_annotation = annotation_args[:args].reject {|k,v| k == :before}
-              @@anno_klass.send ann[:method], method
+              @@anno_klass.send ann[:method], method, *ann[:args]
             end
           end
         end
