@@ -3,39 +3,65 @@ require File.dirname(__FILE__) + '/spec_helper'
 module ClassAnnotations
   extend Ranno::Annotations
 
-  attr :fie_list
-
-  class_annotation
-  def self.fie(method_name)
+  class_annotation :fie do |method_name|
     @fie_list ||= []
     @fie_list << method_name
   end
+
+  instance_annotation :play do |method_name|
+    puts method_name + " wants to play!"
+  end
 end
 
-module InstanceAnnotations
-  extend Ranno::Annotations
-end
-
-class HasClassAnnotations
+class TestClass1
   include Ranno::Base
-
   use_annotations ClassAnnotations
+
+  fie
+  def say_hello
+    puts "hello"
+  end
+
+  def self.retrieved_fied
+    @fie_list
+  end
+end
+
+class TestClass2
+  include Ranno::Base
+  use_annotations ClassAnnotations
+
+  fie
+  def say_hello
+    puts "hello"
+  end
+
+  fie
+  def say_goodbye
+    puts "goodbye"
+  end
+
+  def self.retrieved_fied
+    @fie_list
+  end
+end
+
+class ParentClass
+  
+end
+
+class ChildClass < ParentClass
+
 end
 
 describe "ranno" do
   describe 'Class Annotations' do
-    it "should register class annotations" do
-      class TestClass < HasClassAnnotations
-        fie
-        def say_hello
-          puts "hello"
-        end
+    it "should execute class annotations" do
+      TestClass1.retrieved_fied.should eql([:say_hello])
+    end
 
-        def self.retrieved_fied
-          @fie_list
-        end
-      end
-      TestClass.retrieved_fied.should equal([:say_hello])
+    it "should execute multiple methods with teh same class annotations" do
+      TestClass2.retrieved_fied.should eql([:say_hello, :say_goodbye])
     end
   end
 end
