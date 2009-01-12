@@ -8,8 +8,10 @@ module ClassAnnotations
     @fie_list << method_name
   end
 
-  instance_annotation :play do |method_name|
-    puts method_name + " wants to play!"
+  instance_annotation :counter, :hook => :after do |method_name, hook|
+    @counter ||= {}
+    @counter[method_name] = 0 unless @counter.key? method_name
+    @counter[method_name] += 1
   end
 end
 
@@ -41,6 +43,16 @@ class TestClass2
     puts "goodbye"
   end
 
+  counter
+  def count_me_in
+    
+  end
+
+  def get_count_of sym
+#    puts "getting counter in #{self} (#{@counter})"
+    @counter[sym]
+  end
+
   def self.retrieved_fied
     @fie_list
   end
@@ -62,6 +74,14 @@ describe "ranno" do
 
     it "should execute multiple methods with teh same class annotations" do
       TestClass2.retrieved_fied.should eql([:say_hello, :say_goodbye])
+    end
+  end
+
+  describe 'Instance Annotations' do
+    it "should work" do
+      t2 = TestClass2.new
+      4.times { t2.count_me_in }
+      t2.get_count_of(:count_me_in).should equal(4)
     end
   end
 end

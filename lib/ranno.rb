@@ -3,91 +3,29 @@ require 'extlib'
 
 module Ranno
   module Annotations
+    # Class annotations fire once, when the method itself is initialized
     def class_annotation(method_name, *args, &block)
       self.class.send(:define_method, method_name) do |*args|
         add_current_annotations(:class, {:method => method_name, :args => args})
       end
       self.class.send(:define_method, (method_name.to_s + "_annotation").to_sym, &block)
+#      class << self
+#        define_method((method_name.to_s + "_annotation").to_sym, block)
+#      end
     end
 
+    # Instance annotations fire every time the method is called
     def instance_annotation(method_name, *args, &block)
-      self.class.send(:define_method, method_name) do |*args|
-        add_current_annotations(:instance, {:method => method_name, :args => args})
+      self.class.send(:define_method, method_name) do |*args2|
+        add_current_annotations(:instance, {:method => method_name, :args => args, :block => block})
       end
-      self.class.send(:define_method, (method_name.to_s + "_annotation").to_sym, &block)
-    end
-
-    class Core
-      
-      # Class annotations fire once, when the method itself is initialized
-      
-
-      @@instance_annotations = []
-
-      # Instance annotations fire every time the method is called
-      def self.instance_annotation(method_name, *args, &block)
-        @@instance_annotations << {:method => method_name, :args => args, :block => block}
-      end
-
-      def self.is_instance_annotation? annotation
-        @@instance_annotations.each do |ia|
-          return true if ia[:method] == annotation
-        end
-        return false
-      end
-
-      def self.get_instance_annotation annotation
-        @@instance_annotations.each do |ia|
-          return ia if ia[:method] == annotation
-        end
-        return nil
-      end
-    end
-
-    def set_current_instance_annotation=(ann)
-      @@instance_annotation = ann
-    end
-
-    def annotation_args
-      @@instance_annotation
-    end
-
-    def singleton_method_added(annotation)
-      #      puts "new annotation: #{annotation}"
-      if(@@core_annotations.length == 0)
-        #        raise "Annotation needs to be labeled as class or instance"
-      end
-      @@core_annotations.each_pair do |ann_name, ann_data|
-        #        puts "ann_name is #{ann_name}, ann_data is #{ann_data.inspect}"
-        ann_data.each do |a|
-          if a.key? :block
-            Core.send(ann_name, annotation, *a[:args], &a[:block])
-          else
-            Core.send(ann_name, annotation, *a[:args])
-          end
-        end
-      end
-      @@core_annotations = {}
-    end
-
-    @@core_annotations = {}
-
-    def method_missing(annotation, *args, &block)
-      #      puts "annotation method missing: #{annotation}"
-      if Core.respond_to? annotation
-        ann = {:args => args}
-        ann[:block] = block if block_given?
-        (@@core_annotations[annotation] ||= []) << ann
-      else
-        super
-      end
+      self.send(:define_method, (method_name.to_s + "_annotation").to_sym, &block)
     end
   end
 
   module Base
     include Extlib::Hook
 
-    @@annotations = []
     @@current_annotations = {}
     def get_current_annotations
       @@current_annotations
@@ -96,10 +34,16 @@ module Ranno
     def add_current_annotations(type, value)
       (@@current_annotations[type] ||= []).push(value)
     end
+
+    def params=(ann)
+      @@current_args = ann
+    end
+
+    def params
+      @@current_args
+    end
     
     def use_annotations(anno_klass)
-      #      puts "Using annotations: #{anno_klass}"
-      @@annotations = @@annotations + anno_klass.methods - Object.methods
       @@anno_klass = anno_klass
       self.send :include, anno_klass
     end
@@ -114,42 +58,35 @@ module Ranno
     end
 
     def my_method_added(args, method)
-      #      (puts "returing: #{method}; #{args.inspect}" or return) if args.key? method or @@hooking
-#      puts 'in my_method_added'
       return if @@hooking
-#      puts "not hooking!"
-#      puts "my method added! #{method}.  current annotations: #{get_current_annotations.inspect}"
-      #      return "method not defined" unless method_defined?(method)
-      #      puts "Adding new method: #{method.inspect}; #{args.inspect}"
-      #      puts "was #{method.inspect} already a key in #{args.inspect}? #{args.key? method}"
       (get_current_annotations[:class] || []).each do |ann|
-        ann[:args].unshift(method)
-        self.send((ann[:method].to_s + '_annotation').to_sym, *ann[:args])
-
+        self.send((ann[:method].to_s + '_annotation').to_sym, method, *ann[:args])
       end
-      (@@current_annotations[:instance_annotation] || []).each do |ann|
-        if ann.key? :block
-          #          @@anno_klass.send(ann[:method], ann[:args], ann[:block])
-        else
-          #          ann[:args].unshift(method)
-          #          @@anno_klass.send(ann[:method], *ann[:args])
-        end
-        unless method.nil?
-          #          puts "hook args: #{ann.inspect}"
-          #          next if ann[:args].length > 1
-          annotation_args = ::Ranno::Annotations::Core.get_instance_annotation(ann[:method])
-          #          puts "instance annotation args are #{annotation_args.inspect}"
-          if annotation_args[:args].include?(:before) || !annotation_args[:args].include?(:after)
-            before(method) do
-              @@anno_klass.set_current_instance_annotation = annotation_args[:args].reject {|k,v| k == :after}
-              @@anno_klass.send ann[:method], method, *ann[:args]
+      (get_current_annotations[:instance] || []).each do |ann|
+        hook_before = hook_after = false
+        ann[:args].each do |arg|
+          if arg.is_a? Hash
+            if arg[:hook].is_a? Array
+              hook_before = true if arg[:hook].include? :before
+              hook_after = true if arg[:hook].include? :after
+            else
+              hook_before = true if arg[:hook] == :before
+              hook_after = true if arg[:hook] == :after
             end
           end
-          if annotation_args[:args].include? :after
-            after(method) do
-              @@anno_klass.set_current_instance_annotation = annotation_args[:args].reject {|k,v| k == :before}
-              @@anno_klass.send ann[:method], method, *ann[:args]
-            end
+        end
+        if hook_before
+          before(method) do
+            self.params = {:method => method, :args => ann[:args].reject {|key| key == :after}}
+            annotation_method = (ann[:method].to_s + '_annotation').to_sym
+            self.send annotation_method, method, *ann[:args]
+          end
+        end
+        if hook_after
+          after(method) do
+            self.params = {:method => method, :args => ann[:args].reject {|key| key == :after}}
+            annotation_method = (ann[:method].to_s + '_annotation').to_sym
+            self.send annotation_method, method, *ann[:args]
           end
         end
       end
