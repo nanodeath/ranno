@@ -1,8 +1,0 @@
-== ranno
-
-Ranno is a way to annotate your project, to provide useful "compile"-time
-and runtime behavior.  Examples of this behavior will eventually be made and
-put into the specs, as will documentation.  For now, you have to either look
-at the specs or read the small amount of code there is.  Or ask me.
-
--Max

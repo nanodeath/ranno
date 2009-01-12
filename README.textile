@@ -1,0 +1,44 @@
+h1. ranno
+
+Ranno is a way to annotate your project, to provide useful "compile"-time
+and runtime behavior.  Examples of this behavior will eventually be made and
+put into the specs, as will documentation.  For now, you have to either look
+at the specs or read the small amount of code there is.  Or ask me.
+
+-Max
+
+h1. How this works
+
+Currently, there are two poorly named types of annotations: class annotations and
+instance annotations.
+
+h2. Class annotations
+
+Class annotations execute once and only once -- when the method is defined.  The
+class annotation is passed the name of the method it's annotating when that
+method becomes defined.
+
+<pre>
+<code>
+module MyAnnotations
+  extend Ranno::Annotations
+
+  class_annotation :announce do |method_name|
+    puts "Huzzah, #{method_name.inspect} has been defined!"
+  end
+end
+
+class TestClass1
+  include Ranno::Base
+  use_annotations ClassAnnotations
+
+  announce
+  def parse_data(data)
+    "Consider it parsed!"
+  end
+end
+</code>
+</pre
+
+Upon loading this file, the output @"Huzzah, :parse_data has been defined!@ will
+be printed to the console.
