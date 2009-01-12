@@ -77,7 +77,6 @@ module Ranno
         self.send((ann[:method].to_s + '_annotation').to_sym, method, *ann[:args])
       end
       (get_current_annotations[:instance] || []).each do |ann|
-        #        puts "ann is #{ann[:args].inspect}"
         hook_before = hook_after = false
         ann[:definition_args].each_pair do |key, value|
           if key == :hook
