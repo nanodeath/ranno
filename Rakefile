@@ -13,17 +13,18 @@ require 'spec/rake/spectask'
 
 spec = Gem::Specification.new do |s|
   s.name = 'ranno'
-  s.version = '0.0.1'
-  s.has_rdoc = true
+  s.version = '0.1'
+  s.has_rdoc = false
   s.extra_rdoc_files = ['README', 'LICENSE']
-  s.summary = 'Your summary here'
+  s.summary = 'Lets you add useful annotations to your Ruby libraries!'
   s.description = s.summary
-  s.author = ''
-  s.email = ''
+  s.author = 'Max "Nanodeath" Aller'
+  s.email = 'nanodeath@gmail.com'
   # s.executables = ['your_executable_here']
   s.files = %w(LICENSE README Rakefile) + Dir.glob("{bin,lib,spec}/**/*")
   s.require_path = "lib"
   s.bindir = "bin"
+  s.add_dependency("extlib", ">= 0.9.0", "< 1.0")
 end
 
 Rake::GemPackageTask.new(spec) do |p|

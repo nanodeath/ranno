@@ -12,26 +12,36 @@ module ClassAnnotations
     @foo_list ||= []
     @foo_list << method_name
   end
+end
 
+module InstanceAnnotations
+  extend Ranno::Annotations
+  
+  # Count the total number of times method_name has been executed (in this class)
   instance_annotation :counter, :hook => :before do |method_name|
     @counter ||= {}
     @counter[method_name] = 0 unless @counter.key? method_name
     @counter[method_name] += 1
   end
 
+  # Record the amount of time it takes a method to execute and store that value
+  # in @timer_result[method_name]
   instance_annotation :timer, :hook => :both do |method_name, opts|
     @timer ||= {}
     @timer[method_name] ||= []
     opts ||= {}
+    
     if(ranno_params[:hook] == :before)
       @timer[method_name].push(Time.now)
     else
       time_taken = Time.now - @timer[method_name].pop
-      if (!opts[:ignore_recursion] || @timer[method_name].size == 0) && opts[:verbose]
-        puts "Time It: #{method_name} took #{time_taken}s"
+      if (!opts[:ignore_recursion] || @timer[method_name].size == 0)
+        if opts[:verbose]
+          puts "Time It: #{method_name} took #{time_taken}s"
+        end
+        @timer_result ||= {}
+        @timer_result[method_name] = time_taken
       end
-      @timer_result ||= {}
-      @timer_result[method_name] = time_taken
     end
   end
 end
@@ -61,7 +71,7 @@ end
 
 class TestClass2
   include Ranno::Base
-  use_annotations ClassAnnotations
+  use_annotations InstanceAnnotations
 
   fie
   def say_hello
@@ -75,7 +85,7 @@ class TestClass2
 
   counter
   def count_me_in
-    
+    3 == 2 + 1
   end
 
   timer
@@ -159,14 +169,11 @@ describe "ranno" do
       4.times { t2.count_me_in }
       t2.get_count_of(:count_me_in).should equal(4)
 
-      t2.time_me
+      lambda {t2.time_me}.should_not raise_error
+      
       t2.dumb_fibonacci(15)
       t2.smart_fibonacci(15)
-      t2.get_time_of(:dumb_fibonacci).should satisfy {|n|
-        n > t2.get_time_of(:smart_fibonacci)
-      }
-
+      t2.get_time_of(:dumb_fibonacci).should > t2.get_time_of(:smart_fibonacci)
     end
   end
 end
-
