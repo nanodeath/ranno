@@ -46,6 +46,7 @@ end
 Upon loading this file, the output @"Huzzah, :parse_data has been defined!@ will
 be printed to the console.
 
+
 h2. Instance annotations
 
 Instance annotations, on the other hand, run every time a method is called,
@@ -153,4 +154,9 @@ end
 </code>
 </pre>
 
+h1. Etc
+
 Questions?  Let me know by sending me a message!
+
+For more examples and/or if you think this document is out of date, check out
+the specs.
