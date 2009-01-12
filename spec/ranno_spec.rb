@@ -164,15 +164,24 @@ describe "ranno" do
   end
 
   describe 'Instance Annotations' do
-    it "should work" do
+    it "should work with a method called multiple times" do
       t2 = TestClass2.new
+      
       4.times { t2.count_me_in }
       t2.get_count_of(:count_me_in).should equal(4)
+    end
 
-      lambda {t2.time_me}.should_not raise_error
+    it "should work with a :both hook" do
+      t2 = TestClass2.new
       
+      lambda {t2.time_me}.should_not raise_error
+      t2.get_time_of(:time_me).should_not be_nil
+      t2.get_time_of(:non_existant).should be_nil
+
       t2.dumb_fibonacci(15)
       t2.smart_fibonacci(15)
+
+      # This is pretty safe ;)
       t2.get_time_of(:dumb_fibonacci).should > t2.get_time_of(:smart_fibonacci)
     end
   end
