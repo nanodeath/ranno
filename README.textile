@@ -25,10 +25,13 @@ module MyAnnotations
 
   class_annotation :announce do |method_name|
     puts "Huzzah, #{method_name.inspect} has been defined!"
+    # To store state, use a @instance-style variable here
+    # and in MyClass, use the same @instance-style variable in your class
+    # methods
   end
 end
 
-class TestClass1
+class MyClass
   include Ranno::Base
   use_annotations ClassAnnotations
 
@@ -38,7 +41,115 @@ class TestClass1
   end
 end
 </code>
-</pre
+</pre>
 
 Upon loading this file, the output @"Huzzah, :parse_data has been defined!@ will
 be printed to the console.
+
+h2. Instance annotations
+
+Instance annotations, on the other hand, run every time a method is called,
+either before, after, or before and after it's called.  Unlike class
+annotations, instance annotations have access to the class's instance variables
+(since they're invoked after the class is fully initialized).
+
+<pre>
+<code>
+module InstanceAnnotations
+  extend Ranno::Annotations
+
+  # Count the total number of times method_name has been executed (in this class)
+  # This is executed each time before the annotated method is called
+  instance_annotation :counter, :hook => :before do |method_name|
+    @counter ||= {}
+    @counter[method_name] = 0 unless @counter.key? method_name
+    @counter[method_name] += 1
+  end
+end
+
+class MyClass
+  include Ranno::Base
+  use_annotations InstanceAnnotations
+
+  counter
+  def count_me
+    1 + 1
+  end
+
+  def check_counter(method_name)
+    @counter[method_name]
+  end
+end
+
+m = MyClass.new
+4.times { m.count_me }
+puts m.check_counter(:count_me) # => will output 4
+</code>
+</pre>
+
+The possibilities for the :hook argument are:
+* :before
+* :after
+* :both
+* [:before, :after]
+* omitted (defaults to :before)
+
+Another thing you may notice from the above example is that instance annotations
+are actually defined in the scope of the class, meaning you have access to all
+the instance and class variables you would in one of your own methods.
+
+h2. Lots more examples
+
+You can also do slightly more interesting things, like pass in arguments to the
+annotation, like so:
+
+<pre>
+<code>
+module InstanceAnnotations
+  extend Ranno::Annotations
+
+  instance_annotation :is_like do |method_name, opts|
+    opts ||= {}
+    if opts.key? :smells_like
+     puts method_name + ' smells like ' + opts[:smells_like]
+    end
+    if opts.key? :sounds_like
+      puts method_name + ' sounds like ' + opts[:sounds_like]
+    end
+  end
+end
+
+class MyClass
+  include Ranno::Base
+  use_annotations InstanceAnnotations
+
+  is_like :smells_like => 'a monkey', :sounds_like => 'a dog'
+  def your_mom
+    1 + 1
+  end
+end
+</code>
+</pre>
+
+Any arguments you pass in to the annotation (like :smells_like, above) will
+be passed in after method_name to the annotation definition block.  If you want,
+you can pass in arguments at the annotation definition level:
+
+<pre>
+<code>
+module InstanceAnnotations
+  extend Ranno::Annotations
+
+  instance_annotation :generic_ann, :foo => bar do |method_name|
+    opts ||= {}
+    ranno_params[:foo] == :bar
+    # HINT: you can access the hook state this way too, but I tweak the :hook
+    # value a bit before passing it in here.  If you hook before AND after a
+    # method is called, I change the ranno_params[:hook] value to :before
+    # before the annotated method is called and to :after after it's called.
+  end
+end
+</code>
+</pre>
+
+Questions?  Let me know by sending me a message!

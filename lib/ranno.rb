@@ -4,11 +4,12 @@ require 'extlib'
 module Ranno
   module Annotations
     # Class annotations fire once, when the method itself is initialized
-    def class_annotation(method_name, &block)
+    def class_annotation(method_name, definition_args={}, &block)
       self.class.class_eval do
         define_method(method_name) do |*args|
           add_current_annotations(:class, {
               :method => method_name,
+              :definition_args => definition_args,
               :args => args})
         end
         define_method((method_name.to_s + "_annotation").to_sym, block)
@@ -22,8 +23,7 @@ module Ranno
           add_current_annotations(:instance, {
               :method => method_name,
               :definition_args => definition_args, 
-              :args => args,
-              :block => block})
+              :args => args})
         end
       end
       self.class_eval do
@@ -73,6 +73,7 @@ module Ranno
     def my_method_added(args, method)
       return if @@hooking
       (get_current_annotations[:class] || []).each do |ann|
+        self.ranno_params = ann[:definition_args]
         self.send((ann[:method].to_s + '_annotation').to_sym, method, *ann[:args])
       end
       (get_current_annotations[:instance] || []).each do |ann|
