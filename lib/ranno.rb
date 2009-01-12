@@ -94,7 +94,7 @@ module Ranno
 
         if hook_before
           before(method) do
-            tmp_params = ann[:definition_args].reject {|key, value| key == :hook}
+            tmp_params = ann[:definition_args]
             tmp_params[:hook] = :before
             self.ranno_params = tmp_params
             annotation_method = (ann[:method].to_s + '_annotation').to_sym
@@ -104,7 +104,7 @@ module Ranno
 
         if hook_after
           after(method) do
-            tmp_params = ann[:definition_args].reject {|key, value| key == :hook}
+            tmp_params = ann[:definition_args]
             tmp_params[:hook] = :after
             self.ranno_params = tmp_params
             annotation_method = (ann[:method].to_s + '_annotation').to_sym
