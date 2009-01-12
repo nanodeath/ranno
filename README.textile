@@ -88,11 +88,11 @@ puts m.check_counter(:count_me) # => will output 4
 </pre>
 
 The possibilities for the :hook argument are:
-* :before
-* :after
-* :both
-* [:before, :after]
-* omitted (defaults to :before)
+* @:before@
+* @:after@
+* @:both@
+* @[:before, :after]@
+* omitted (defaults to @:before@)
 
 Another thing you may notice from the above example is that instance annotations
 are actually defined in the scope of the class, meaning you have access to all
@@ -132,8 +132,9 @@ end
 </pre>
 
 Any arguments you pass in to the annotation (like :smells_like, above) will
-be passed in after method_name to the annotation definition block.  If you want,
-you can pass in arguments at the annotation definition level:
+be passed in after method_name to the annotation definition block (it doesn't 
+have to be a hash).  If you want, you can pass in arguments at the annotation
+definition level:
 
 <pre>
 <code>
