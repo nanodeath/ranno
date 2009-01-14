@@ -61,6 +61,7 @@ module Ranno
       self.send :include, anno_klass
     end
 
+
     def self.included(klass)
       klass.send :include, Extlib::Hook
       klass.send :extend, Base

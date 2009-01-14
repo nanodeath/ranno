@@ -1,4 +1,5 @@
 require File.dirname(__FILE__) + '/spec_helper'
+require File.dirname(__FILE__) + '/user'
 
 module ClassAnnotations
   extend Ranno::Annotations
@@ -183,6 +184,15 @@ describe "ranno" do
 
       # This is pretty safe ;)
       t2.get_time_of(:dumb_fibonacci).should > t2.get_time_of(:smart_fibonacci)
+    end
+  end
+
+  describe User do
+    it "should have a list of json-able args" do
+      louis = User.new('louis', 'passw0rd', 'louis@gmail.com', '12354',
+        '123 SimStreet', 'Apartment C', 'Simcity', 'WA', 'KFC')
+      louis.to_json.should eql('{"username":"louis","location":["123 SimStreet"' +
+        ',"Apartment C","Simcity","WA","KFC"],"zipcode":"12354","email":"louis@gmail.com"}')
     end
   end
 end

@@ -11,21 +11,18 @@ require 'rake/rdoctask'
 require 'rake/testtask'
 require 'spec/rake/spectask'
 
-spec = Gem::Specification.new do |s|
-  s.name = 'ranno'
-  s.version = '0.1'
-  s.has_rdoc = false
-  s.extra_rdoc_files = ['LICENSE']
-  s.summary = 'Lets you add useful annotations to your Ruby libraries!'
-  s.description = s.summary
-  s.author = 'Max "Nanodeath" Aller'
-  s.email = 'nanodeath@gmail.com'
-  # s.executables = ['your_executable_here']
-  s.files = %w(LICENSE README.textile Rakefile) + Dir.glob("{bin,lib,spec}/**/*")
-  s.require_path = "lib"
-  s.bindir = "bin"
-  s.add_dependency("extlib", ">= 0.9.0", "< 1.0")
+# Load the gemspec using the same limitations as github
+def spec
+  @spec ||=
+    begin
+      require 'rubygems/specification'
+      data = File.read('ranno.gemspec')
+      spec = nil
+      Thread.new { spec = eval("$SAFE = 3\n#{data}") }.join
+      spec
+    end
 end
+
 
 Rake::GemPackageTask.new(spec) do |p|
   p.gem_spec = spec
